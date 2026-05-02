@@ -32,6 +32,7 @@ void setup() {
   pinMode(Moist_sens, INPUT);
   pinMode(Open, OUTPUT);
   pinMode(Close, OUTPUT);
+  pinMode(TemppotPin, INPUT);
 
   digitalWrite(Open, HIGH);
   digitalWrite(Close, HIGH);
@@ -57,7 +58,7 @@ void loop() {
 
   // Read moisture target potentiometer and map it to minimum soil moisture
   int MoistpotValue = analogRead(Moistpotpin);
-  float Minmoist = map(MoistpotValue, 0, 4095, 10, 30);
+  float Minmoist = map(MoistpotValue, 0, 4095, 100, 0);
 
   Serial.print("Moisture : ");
   Serial.print(MoistsensorValue);
@@ -71,18 +72,11 @@ void loop() {
   // Read temp target potentiometer value and map it to temperature range
   int TemppotValue = analogRead(TemppotPin);
   float Maxtemp = map(TemppotValue, 0, 4095, 10, 30);
-  float Mintemp = Maxtemp - 4;
+  float Mintemp = Maxtemp - 4;  
 
-  
-  
- 
-  
-
-  if (!isnan(t)) { // check if 'is not a number'
-    
+  if (!isnan(t)) { // check if 'is not a number'    
     Serial.print("Set Temp °C = ");Serial.print (Maxtemp);
     Serial.print("Temp °C = "); Serial.print(t); Serial.print("\t\t");
-
     u8g2.setFont(u8g2_font_ncenB08_tr);	// choose a suitable font
     u8g2.drawStr(0,10,"Hello World!");	// write something to the internal memory
     u8g2.sendBuffer();					// transfer internal memory to the display
