@@ -2,8 +2,15 @@
 #include <Adafruit_SHT31.h>
 #include <Arduino.h>
 #include <U8g2lib.h>
-#include <Wire.h>
 
+#ifdef U8X8_HAVE_HW_SPI
+#include <SPI.h>
+#endif
+#ifdef U8X8_HAVE_HW_I2C
+#include <Wire.h>
+#endif
+
+// Please UNCOMMENT one of the contructor lines below
 // U8g2 Contructor List (Frame Buffer)
 // The complete list is available here: https://github.com/olikraus/u8g2/wiki/u8g2setupcpp
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
@@ -14,12 +21,13 @@ Adafruit_SHT31 sht31 = Adafruit_SHT31();
 #define uS_TO_S_FACTOR 1000000ULL /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP  40          /* Time ESP32 will go to sleep (in seconds) */
 
-int Open = 1;
-int Close = 2;
-const int TemppotPin = 4; // Pin connected to potentiometer to set target temp
-int Moist_sens = 5;  // The input pin for the Moisture sensor 
-int Watervalve = 3; //Pin that opens watervalve
-int Moistpotpin =6; //Pin connected to potentiometer to set minimum moisture
+int Open = 20;
+int Close = 21;
+int Moist_sens = 0;  // The input pin for the Moisture sensor 
+int Moist_pot =1; //Pin connected to potentiometer to set minimum moisture
+int TemppotPin = 2; // Pin connected to potentiometer to set target temp
+int Watervalve = 7; //Pin that opens watervalve
+int dryLED = 6; //Red LED indicating dry soil
 
 int MoistsensorValue = 0; // variable to store the value coming from the sensor
 
@@ -28,11 +36,10 @@ void setup() {
   delay(100);
   u8g2.begin();
 
-  pinMode (Moistpotpin, INPUT);
+  pinMode (Moist_pot, INPUT);
   pinMode(Moist_sens, INPUT);
   pinMode(Open, OUTPUT);
   pinMode(Close, OUTPUT);
-  pinMode(TemppotPin, INPUT);
 
   digitalWrite(Open, HIGH);
   digitalWrite(Close, HIGH);
@@ -57,8 +64,8 @@ void loop() {
   MoistsensorValue = map(MoistsensorValue,1023,0,0,100);
 
   // Read moisture target potentiometer and map it to minimum soil moisture
-  int MoistpotValue = analogRead(Moistpotpin);
-  float Minmoist = map(MoistpotValue, 0, 4095, 100, 0);
+  int MoistpotValue = analogRead(Moist_pot);
+  float Minmoist = map(MoistpotValue, 0, 4095, 0, 100);
 
   Serial.print("Moisture : ");
   Serial.print(MoistsensorValue);
@@ -66,22 +73,25 @@ void loop() {
   Serial.print ("Min Moisture");
   Serial.print (Minmoist);
   
-  u8g2.clearBuffer();	// clear the internal memory
+  u8g2.clearBuffer();	// clear the internal display memory
   u8g2.drawStr(10, 30, ("Soil moisture = " + String(MoistsensorValue) + " %").c_str());
 
   // Read temp target potentiometer value and map it to temperature range
   int TemppotValue = analogRead(TemppotPin);
   float Maxtemp = map(TemppotValue, 0, 4095, 10, 30);
-  float Mintemp = Maxtemp - 4;  
-
-  if (!isnan(t)) { // check if 'is not a number'    
+  float Mintemp = Maxtemp - 4;
+  
+  if (!isnan(t)) { // check if 'is not a number'
+    
     Serial.print("Set Temp °C = ");Serial.print (Maxtemp);
     Serial.print("Temp °C = "); Serial.print(t); Serial.print("\t\t");
-    u8g2.setFont(u8g2_font_ncenB08_tr);	// choose a suitable font
-    u8g2.drawStr(0,10,"Hello World!");	// write something to the internal memory
+
+    u8g2.setFont(u8g2_font_crox1cb_tr);	// choose a suitable font
+    u8g2.drawStr(0,25,"Reading...");	// write something to the internal memory
     u8g2.sendBuffer();					// transfer internal memory to the display
-    delay(2000);     
+    delay(2000);   
     u8g2.drawStr(010, 10, ("Temp. = " + String(t) + " °C").c_str());
+    u8g2.setFont(u8g2_font_crox2cb_tf);	// choose another font
     u8g2.drawStr(10, 20, ("Target = " + String(Maxtemp)).c_str());
     u8g2.sendBuffer();
   } 
@@ -100,9 +110,13 @@ void loop() {
   }
    u8g2.sendBuffer();
 
-  if (MoistsensorValue < MoistpotValue) {digitalWrite, (Watervalve, LOW);
+  if (MoistsensorValue < MoistpotValue) { digitalWrite, (Watervalve, LOW);
+  digitalWrite, (dryLED, LOW);
   delay(4000);
   digitalWrite, (Watervalve, HIGH);
+  }
+  else {
+  digitalWrite, (dryLED, HIGH);
   }
   if (t > Maxtemp) {
     digitalWrite(Open, LOW);
